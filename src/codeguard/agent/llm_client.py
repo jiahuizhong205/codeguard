@@ -46,7 +46,7 @@ class RealLLMClient(LLMClient):
                 url,
                 headers=headers,
                 json=payload,
-                timeout=60.0,
+                timeout=300.0,
             )
             resp.raise_for_status()
             data = resp.json()

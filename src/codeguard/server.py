@@ -135,14 +135,21 @@ async def _run_agent(session_id: str, task: str, sessions: dict, ws: WebSocket |
                 "content": step.content if isinstance(step.content, str) else str(step.content),
             }})
 
-    steps = await loop.run(task)
-    for step in steps:
-        await send_step(step)
-        sessions[session_id]["steps"].append({
-            "step_index": step.step_index,
-            "step_type": step.step_type.value,
-            "content": step.content if isinstance(step.content, str) else str(step.content),
-        })
+    try:
+        steps = await loop.run(task)
+        for step in steps:
+            await send_step(step)
+            sessions[session_id]["steps"].append({
+                "step_index": step.step_index,
+                "step_type": step.step_type.value,
+                "content": step.content if isinstance(step.content, str) else str(step.content),
+            })
 
-    if ws:
-        await ws.send_json({"type": "done"})
+        if ws:
+            await ws.send_json({"type": "done"})
+    except Exception as e:
+        err_msg = f"Agent error: {type(e).__name__}: {e}"
+        if ws:
+            await ws.send_json({"type": "error", "message": err_msg})
+        else:
+            raise
