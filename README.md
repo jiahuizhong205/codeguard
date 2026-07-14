@@ -10,37 +10,64 @@ CodeGuard 是一个 Coding Agent Harness，实现了完整的 agent 主循环（
 
 ## 快速开始
 
-### Docker（推荐）
+### 方式一：交互式初始化（推荐）
 
 ```bash
-# 拉取镜像
+git clone https://github.com/jiahuizhong205/codeguard.git
+cd codeguard
+pip install -e ".[dev]"
+codeguard init          # 交互式引导，生成 .env
+codeguard serve         # 启动服务
+```
+
+在浏览器中打开 http://localhost:8000。
+
+### 方式二：手动编辑 .env
+
+```bash
+cp .env.example .env    # 复制配置模板
+# 编辑 .env，填入你的 API 地址、Key、模型名
+codeguard serve
+```
+
+### Docker 运行
+
+```bash
 docker pull ghcr.io/jiahuizhong205/codeguard:latest
 
-# 首次运行：配置凭据
+# 首次运行：交互式配置
 docker run -it -p 8000:8000 -v codeguard-data:/data codeguard:latest init
 
 # 启动服务
 docker run -p 8000:8000 -v codeguard-data:/data -v /path/to/workspace:/workspace codeguard:latest serve
 ```
 
-在浏览器中打开 http://localhost:8000。
+## LLM API 配置
 
-### 从源码运行
+所有 LLM 相关配置集中在 **一个文件** `.env` 中，修改后重启服务即可生效。
 
-```bash
-git clone https://github.com/jiahuizhong205/codeguard.git
-cd codeguard
-pip install -e ".[dev]"
-codeguard init
-codeguard serve
+### 配置项
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `LLM_BASE_URL` | LLM API 地址（OpenAI 兼容格式） | `https://api.example.com` |
+| `LLM_API_KEY` | API Key | `sk-xxxxxxxxxxxx` |
+| `LLM_MODEL` | 模型名称 | `gpt-4` |
+
+### 修改方法
+
+1. 编辑项目根目录的 `.env` 文件
+2. 修改对应的值
+3. 重启服务：`codeguard serve`
+
+`.env` 文件示例：
+```env
+LLM_BASE_URL=https://your-api-url.example.com
+LLM_API_KEY=sk-your-api-key
+LLM_MODEL=gpt-4
 ```
 
-## 凭据安全
-
-- API key 使用 Fernet 对称加密存储（需主密码解锁）
-- key 绝不硬编码、绝不进 Git、绝不进日志
-- 首次运行引导式安全录入
-- 查看状态：`codeguard credentials status`（不回显明文）
+> **安全说明**：`.env` 已在 `.gitignore` 中排除，不会被提交到 Git。API Key 不会出现在日志或终端输出中。查看配置状态运行 `codeguard credentials`，只显示是否已配置和 URL，不回显 Key。
 
 ## 机制演示
 
