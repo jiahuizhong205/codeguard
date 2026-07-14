@@ -1,26 +1,26 @@
-# CodeGuard Implementation Plan
+# CodeGuard 实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a governance-focused Coding Agent Harness from scratch in Python, with mock-LLM unit tests, React frontend, and Docker distribution.
+**目标：** 从零构建一个以治理为核心的 Coding Agent Harness，使用 Python 实现，包含 mock-LLM 单元测试、React 前端和 Docker 分发。
 
-**Architecture:** Monolithic Python backend (FastAPI + WebSocket) + React frontend, single Docker container. Agent main loop integrates LLM client, tool dispatcher, guardrail engine, HITL manager, feedback validators, memory store, and skill loader. Deep focus on governance dimension (guardrails, HITL state machine, scope fence, audit log).
+**架构：** 单体 Python 后端（FastAPI + WebSocket）+ React 前端，单 Docker 容器。Agent 主循环集成 LLM 客户端、工具分发器、护栏引擎、HITL 管理器、反馈验证器、记忆存储和技能加载器。深入聚焦治理维度（护栏、HITL 状态机、范围围栏、审计日志）。
 
-**Tech Stack:** Python 3.12, FastAPI, pytest, React + Vite, Docker, cryptography (Fernet), OpenAI-compatible LLM API.
+**技术栈：** Python 3.12, FastAPI, pytest, React + Vite, Docker, cryptography (Fernet), OpenAI 兼容 LLM API。
 
-## Global Constraints
+## 全局约束
 
-- Python 3.12+, pytest as test framework
-- TDD mandatory: red → green → refactor, no implementation before test
-- No agent frameworks (LangChain/AutoGen/CrewAI) — harness kernel must be self-implemented
-- Mechanisms must be code, not prompts — all core mechanisms testable with mock LLM
-- Credentials never hardcoded, never in git, never in logs
-- All file operations sandboxed to workspace directory
-- LLM API is OpenAI-compatible (course-provided URL)
+- Python 3.12+，pytest 作为测试框架
+- TDD 强制要求：红 → 绿 → 重构，禁止先写实现再补测试
+- 禁止使用 agent 框架（LangChain/AutoGen/CrewAI）— harness 内核必须自主实现
+- 机制必须是代码，不能是提示词 — 所有核心机制可用 mock LLM 测试
+- 凭据绝不硬编码、绝不进 Git、绝不进日志
+- 所有文件操作限制在 workspace 沙箱目录内
+- LLM API 为 OpenAI 兼容格式（课程提供 URL）
 
 ---
 
-## File Structure
+## 文件结构
 
 ```
 src/codeguard/
@@ -69,21 +69,21 @@ src/codeguard/
 
 ---
 
-## Phase 1: Foundation
+## Phase 1：基础设施
 
-### Task 1: Project Scaffolding
+### Task 1：项目脚手架
 
-**Files:**
-- Create: `pyproject.toml`
-- Create: `Makefile`
-- Create: `src/codeguard/__init__.py`
-- Create: `tests/__init__.py`
-- Create: `tests/conftest.py`
+**文件：**
+- 创建：`pyproject.toml`
+- 创建：`Makefile`
+- 创建：`src/codeguard/__init__.py`
+- 创建：`tests/__init__.py`
+- 创建：`tests/conftest.py`
 
-**Interfaces:**
-- Produces: project structure, `make test` command
+**接口：**
+- 产出：project structure, `make test` command
 
-- [ ] **Step 1: Create pyproject.toml**
+- [ ] **步骤 1：创建 pyproject.toml**
 
 ```toml
 [build-system]
@@ -124,7 +124,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 ```
 
-- [ ] **Step 2: Create Makefile**
+- [ ] **步骤 2：创建 Makefile**
 
 ```makefile
 .PHONY: test install dev lint
@@ -142,17 +142,17 @@ lint:
 	ruff check src/ tests/
 ```
 
-- [ ] **Step 3: Create package init files**
+- [ ] **步骤 3：创建包初始化文件**
 
-Create `src/codeguard/__init__.py`:
+创建 `src/codeguard/__init__.py`:
 ```python
 """CodeGuard: A governance-focused Coding Agent Harness."""
 __version__ = "0.1.0"
 ```
 
-Create `tests/__init__.py` (empty file).
+创建 `tests/__init__.py` （空文件）。
 
-Create `tests/conftest.py`:
+创建 `tests/conftest.py`:
 ```python
 import pytest
 from pathlib import Path
@@ -165,12 +165,12 @@ def tmp_workspace(tmp_path: Path) -> Path:
     return tmp_path
 ```
 
-- [ ] **Step 4: Verify scaffolding works**
+- [ ] **步骤 4：验证脚手架可用**
 
-Run: `pip install -e ".[dev]" && pytest tests/ -v`
-Expected: PASS (0 tests collected, no errors)
+运行：`pip install -e ".[dev]" && pytest tests/ -v`
+预期：PASS (0 tests collected, no errors)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add pyproject.toml Makefile src/ tests/
@@ -179,17 +179,17 @@ git commit -m "chore: project scaffolding with pyproject.toml, Makefile, test se
 
 ---
 
-### Task 2: Data Models
+### Task 2：数据模型
 
-**Files:**
-- Create: `src/codeguard/models/__init__.py`
-- Create: `src/codeguard/models/entities.py`
-- Test: `tests/test_models.py`
+**文件：**
+- 创建：`src/codeguard/models/__init__.py`
+- 创建：`src/codeguard/models/entities.py`
+- 测试：`tests/test_models.py`
 
-**Interfaces:**
-- Produces: `Action`, `ToolResult`, `GuardrailDecision`, `HITLRequest`, `FeedbackResult`, `MemoryEntry`, `Skill`, `AuditEntry`, `Message`, `LLMResponse`, `StepEvent`
+**接口：**
+- 产出：`Action`, `ToolResult`, `GuardrailDecision`, `HITLRequest`, `FeedbackResult`, `MemoryEntry`, `Skill`, `AuditEntry`, `Message`, `LLMResponse`, `StepEvent`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_models.py
@@ -285,12 +285,12 @@ def test_step_event():
     assert event.step_type == StepType.THINK
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_models.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'codeguard.models'`
+运行：`pytest tests/test_models.py -v`
+预期：FAIL with `ModuleNotFoundError: No module named 'codeguard.models'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/models/__init__.py
@@ -434,12 +434,12 @@ class StepEvent:
     created_at: datetime = field(default_factory=datetime.now)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_models.py -v`
-Expected: PASS (all 12 tests)
+运行：`pytest tests/test_models.py -v`
+预期：PASS (all 12 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/models/ tests/test_models.py
@@ -448,18 +448,18 @@ git commit -m "feat: add data model entities (Action, ToolResult, GuardrailDecis
 
 ---
 
-### Task 3: LLM Abstraction Layer
+### Task 3：LLM 抽象层
 
-**Files:**
-- Create: `src/codeguard/agent/__init__.py`
-- Create: `src/codeguard/agent/llm_client.py`
-- Test: `tests/test_llm_client.py`
+**文件：**
+- 创建：`src/codeguard/agent/__init__.py`
+- 创建：`src/codeguard/agent/llm_client.py`
+- 测试：`tests/test_llm_client.py`
 
-**Interfaces:**
-- Consumes: `Message`, `LLMResponse` from Task 2
-- Produces: `LLMClient` (ABC), `MockLLMClient`, `RealLLMClient`
+**接口：**
+- 消费：`Message`, `LLMResponse` from Task 2
+- 产出：`LLMClient` (ABC), `MockLLMClient`, `RealLLMClient`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_llm_client.py
@@ -502,12 +502,12 @@ def test_llm_client_is_abstract():
         LLMClient()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_llm_client.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'codeguard.agent'`
+运行：`pytest tests/test_llm_client.py -v`
+预期：FAIL with `ModuleNotFoundError: No module named 'codeguard.agent'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/agent/__init__.py
@@ -573,12 +573,12 @@ class RealLLMClient(LLMClient):
             )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_llm_client.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_llm_client.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/agent/ tests/test_llm_client.py
@@ -587,21 +587,21 @@ git commit -m "feat: add LLM abstraction layer with MockLLMClient for determinis
 
 ---
 
-## Phase 2: Tools
+## Phase 2：工具
 
-### Task 4: Tool Base + Dispatcher
+### Task 4：工具基类与分发器
 
-**Files:**
-- Create: `src/codeguard/tools/__init__.py`
-- Create: `src/codeguard/tools/base.py`
-- Create: `src/codeguard/tools/dispatcher.py`
-- Test: `tests/test_tool_dispatcher.py`
+**文件：**
+- 创建：`src/codeguard/tools/__init__.py`
+- 创建：`src/codeguard/tools/base.py`
+- 创建：`src/codeguard/tools/dispatcher.py`
+- 测试：`tests/test_tool_dispatcher.py`
 
-**Interfaces:**
-- Consumes: `Action`, `ToolResult` from Task 2
-- Produces: `Tool` (ABC), `ToolDispatcher`
+**接口：**
+- 消费：`Action`, `ToolResult` from Task 2
+- 产出：`Tool` (ABC), `ToolDispatcher`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_tool_dispatcher.py
@@ -656,12 +656,12 @@ def test_register_multiple_tools():
     assert "fail" in dispatcher.list_tools()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_tool_dispatcher.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_tool_dispatcher.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/tools/__init__.py
@@ -713,12 +713,12 @@ class ToolDispatcher:
         return list(self._tools.keys())
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_tool_dispatcher.py -v`
-Expected: PASS (4 tests)
+运行：`pytest tests/test_tool_dispatcher.py -v`
+预期：PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/tools/ tests/test_tool_dispatcher.py
@@ -727,17 +727,17 @@ git commit -m "feat: add Tool ABC and ToolDispatcher for action routing"
 
 ---
 
-### Task 5: File Tools
+### Task 5：文件工具
 
-**Files:**
-- Create: `src/codeguard/tools/file_tools.py`
-- Test: `tests/test_file_tools.py`
+**文件：**
+- 创建：`src/codeguard/tools/file_tools.py`
+- 测试：`tests/test_file_tools.py`
 
-**Interfaces:**
-- Consumes: `Tool`, `ToolResult` from Task 4
-- Produces: `ReadFile`, `WriteFile`, `EditFile`, `ListFiles`, `SearchContent`
+**接口：**
+- 消费：`Tool`, `ToolResult` from Task 4
+- 产出：`ReadFile`, `WriteFile`, `EditFile`, `ListFiles`, `SearchContent`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_file_tools.py
@@ -803,12 +803,12 @@ def test_search_content(tmp_workspace: Path):
     assert "foo" in result.output
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_file_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_file_tools.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/tools/file_tools.py
@@ -899,12 +899,12 @@ class SearchContent(Tool):
         return ToolResult(success=True, output="\n".join(results))
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_file_tools.py -v`
-Expected: PASS (7 tests)
+运行：`pytest tests/test_file_tools.py -v`
+预期：PASS (7 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/tools/file_tools.py tests/test_file_tools.py
@@ -913,19 +913,19 @@ git commit -m "feat: add file tools (ReadFile, WriteFile, EditFile, ListFiles, S
 
 ---
 
-### Task 6: Shell + Test/Lint Tools
+### Task 6：Shell 与测试/Lint 工具
 
-**Files:**
-- Create: `src/codeguard/tools/shell_tools.py`
-- Create: `src/codeguard/tools/test_tools.py`
-- Test: `tests/test_shell_tools.py`
-- Test: `tests/test_test_tools.py`
+**文件：**
+- 创建：`src/codeguard/tools/shell_tools.py`
+- 创建：`src/codeguard/tools/test_tools.py`
+- 测试：`tests/test_shell_tools.py`
+- 测试：`tests/test_test_tools.py`
 
-**Interfaces:**
-- Consumes: `Tool`, `ToolResult` from Task 4
-- Produces: `RunShell`, `RunTests`, `RunLint`
+**接口：**
+- 消费：`Tool`, `ToolResult` from Task 4
+- 产出：`RunShell`, `RunTests`, `RunLint`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_shell_tools.py
@@ -973,12 +973,12 @@ def test_run_lint():
     assert result.success is True
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_shell_tools.py tests/test_test_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_shell_tools.py tests/test_test_tools.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/tools/shell_tools.py
@@ -1035,12 +1035,12 @@ class RunLint(Tool):
         return self._shell.execute(params)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_shell_tools.py tests/test_test_tools.py -v`
-Expected: PASS (5 tests)
+运行：`pytest tests/test_shell_tools.py tests/test_test_tools.py -v`
+预期：PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/tools/shell_tools.py src/codeguard/tools/test_tools.py tests/test_shell_tools.py tests/test_test_tools.py
@@ -1049,21 +1049,21 @@ git commit -m "feat: add shell and test/lint tools"
 
 ---
 
-## Phase 3: Governance (Deep Focus)
+## Phase 3：治理（深入维度）
 
-### Task 7: Guardrail Engine
+### Task 7：护栏引擎
 
-**Files:**
-- Create: `src/codeguard/governance/__init__.py`
-- Create: `src/codeguard/governance/rules.py`
-- Create: `src/codeguard/governance/guardrail.py`
-- Test: `tests/test_guardrail.py`
+**文件：**
+- 创建：`src/codeguard/governance/__init__.py`
+- 创建：`src/codeguard/governance/rules.py`
+- 创建：`src/codeguard/governance/guardrail.py`
+- 测试：`tests/test_guardrail.py`
 
-**Interfaces:**
-- Consumes: `Action`, `GuardrailDecision`, `GuardrailLevel` from Task 2
-- Produces: `Rule` (ABC), `ShellRule`, `PathRule`, `GuardrailEngine`
+**接口：**
+- 消费：`Action`, `GuardrailDecision`, `GuardrailLevel` from Task 2
+- 产出：`Rule` (ABC), `ShellRule`, `PathRule`, `GuardrailEngine`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_guardrail.py
@@ -1160,12 +1160,12 @@ def test_allow_read_safe_file(engine):
     assert decision.level == GuardrailLevel.ALLOW
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_guardrail.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_guardrail.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/governance/__init__.py
@@ -1279,12 +1279,12 @@ class GuardrailEngine:
         )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_guardrail.py -v`
-Expected: PASS (12 tests)
+运行：`pytest tests/test_guardrail.py -v`
+预期：PASS (12 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/governance/ tests/test_guardrail.py
@@ -1293,16 +1293,16 @@ git commit -m "feat: add GuardrailEngine with 11 deterministic rules (R001-R011)
 
 ---
 
-### Task 8: Scope Fence
+### Task 8：范围围栏
 
-**Files:**
-- Create: `src/codeguard/governance/scope_fence.py`
-- Test: `tests/test_scope_fence.py`
+**文件：**
+- 创建：`src/codeguard/governance/scope_fence.py`
+- 测试：`tests/test_scope_fence.py`
 
-**Interfaces:**
-- Produces: `ScopeFence`
+**接口：**
+- 产出：`ScopeFence`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_scope_fence.py
@@ -1344,12 +1344,12 @@ def test_allow_nested_path(tmp_workspace: Path):
     assert ok is True
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_scope_fence.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_scope_fence.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/governance/scope_fence.py
@@ -1374,12 +1374,12 @@ class ScopeFence:
         return False, f"Path escapes workspace: {target}"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_scope_fence.py -v`
-Expected: PASS (5 tests)
+运行：`pytest tests/test_scope_fence.py -v`
+预期：PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/governance/scope_fence.py tests/test_scope_fence.py
@@ -1388,17 +1388,17 @@ git commit -m "feat: add ScopeFence for workspace boundary enforcement"
 
 ---
 
-### Task 9: HITL Manager
+### Task 9：HITL 管理器
 
-**Files:**
-- Create: `src/codeguard/governance/hitl.py`
-- Test: `tests/test_hitl.py`
+**文件：**
+- 创建：`src/codeguard/governance/hitl.py`
+- 测试：`tests/test_hitl.py`
 
-**Interfaces:**
-- Consumes: `Action`, `HITLRequest`, `HITLState` from Task 2
-- Produces: `HITLManager`
+**接口：**
+- 消费：`Action`, `HITLRequest`, `HITLState` from Task 2
+- 产出：`HITLManager`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_hitl.py
@@ -1448,12 +1448,12 @@ def test_unknown_request_id(manager):
         manager.resolve("nonexistent-id", "approve")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_hitl.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_hitl.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/governance/hitl.py
@@ -1499,12 +1499,12 @@ class HITLManager:
         return [r for r in self._requests.values() if r.state == HITLState.PENDING]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_hitl.py -v`
-Expected: PASS (5 tests)
+运行：`pytest tests/test_hitl.py -v`
+预期：PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/governance/hitl.py tests/test_hitl.py
@@ -1513,17 +1513,17 @@ git commit -m "feat: add HITLManager state machine for human approval flow"
 
 ---
 
-### Task 10: Audit Log
+### Task 10：审计日志
 
-**Files:**
-- Create: `src/codeguard/governance/audit_log.py`
-- Test: `tests/test_audit_log.py`
+**文件：**
+- 创建：`src/codeguard/governance/audit_log.py`
+- 测试：`tests/test_audit_log.py`
 
-**Interfaces:**
-- Consumes: `Action`, `GuardrailDecision`, `ToolResult` from Tasks 2, 7
-- Produces: `AuditLog`
+**接口：**
+- 消费：`Action`, `GuardrailDecision`, `ToolResult` from Tasks 2, 7
+- 产出：`AuditLog`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_audit_log.py
@@ -1571,12 +1571,12 @@ def test_audit_log_multiple_entries(tmp_workspace: Path):
     assert len(entries) == 3
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_audit_log.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_audit_log.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/governance/audit_log.py
@@ -1632,12 +1632,12 @@ class AuditLog:
         return entries
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_audit_log.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_audit_log.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/governance/audit_log.py tests/test_audit_log.py
@@ -1646,21 +1646,21 @@ git commit -m "feat: add AuditLog with JSONL format and param sanitization"
 
 ---
 
-## Phase 4: Feedback & Context
+## Phase 4：反馈与上下文
 
-### Task 11: Feedback Validators
+### Task 11：反馈验证器
 
-**Files:**
-- Create: `src/codeguard/feedback/__init__.py`
-- Create: `src/codeguard/feedback/result.py`
-- Create: `src/codeguard/feedback/validators.py`
-- Test: `tests/test_feedback.py`
+**文件：**
+- 创建：`src/codeguard/feedback/__init__.py`
+- 创建：`src/codeguard/feedback/result.py`
+- 创建：`src/codeguard/feedback/validators.py`
+- 测试：`tests/test_feedback.py`
 
-**Interfaces:**
-- Consumes: `ToolResult` from Task 2
-- Produces: `FeedbackResult`, `TestValidator`, `LintValidator`
+**接口：**
+- 消费：`ToolResult` from Task 2
+- 产出：`FeedbackResult`, `TestValidator`, `LintValidator`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_feedback.py
@@ -1712,12 +1712,12 @@ def test_lint_validator_fail():
     assert len(feedback.failures) > 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_feedback.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_feedback.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/feedback/__init__.py
@@ -1798,12 +1798,12 @@ class LintValidator:
         return errors or ["Lint errors detected (see details)"]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_feedback.py -v`
-Expected: PASS (5 tests)
+运行：`pytest tests/test_feedback.py -v`
+预期：PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/feedback/ tests/test_feedback.py
@@ -1812,17 +1812,17 @@ git commit -m "feat: add TestValidator and LintValidator for deterministic feedb
 
 ---
 
-### Task 12: Memory Store
+### Task 12：记忆存储
 
-**Files:**
-- Create: `src/codeguard/memory/__init__.py`
-- Create: `src/codeguard/memory/store.py`
-- Test: `tests/test_memory.py`
+**文件：**
+- 创建：`src/codeguard/memory/__init__.py`
+- 创建：`src/codeguard/memory/store.py`
+- 测试：`tests/test_memory.py`
 
-**Interfaces:**
-- Produces: `MemoryStore`
+**接口：**
+- 产出：`MemoryStore`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_memory.py
@@ -1872,12 +1872,12 @@ def test_persistence_across_instances(tmp_workspace: Path):
     assert entry.value == "value"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_memory.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_memory.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/memory/__init__.py
@@ -1953,12 +1953,12 @@ class MemoryStore:
         self._write_all(data)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_memory.py -v`
-Expected: PASS (5 tests)
+运行：`pytest tests/test_memory.py -v`
+预期：PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/memory/ tests/test_memory.py
@@ -1967,18 +1967,18 @@ git commit -m "feat: add MemoryStore for cross-session JSON memory"
 
 ---
 
-### Task 13: Skill Loader
+### Task 13：技能加载器
 
-**Files:**
-- Create: `src/codeguard/skills/__init__.py`
-- Create: `src/codeguard/skills/loader.py`
-- Create: `skills/tdd-workflow.md`
-- Test: `tests/test_skill_loader.py`
+**文件：**
+- 创建：`src/codeguard/skills/__init__.py`
+- 创建：`src/codeguard/skills/loader.py`
+- 创建：`skills/tdd-workflow.md`
+- 测试：`tests/test_skill_loader.py`
 
-**Interfaces:**
-- Produces: `SkillLoader`, `Skill`
+**接口：**
+- 产出：`SkillLoader`, `Skill`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_skill_loader.py
@@ -2033,12 +2033,12 @@ def test_malformed_skill_skipped(tmp_path: Path):
     assert skills[0].name == "good"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_skill_loader.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_skill_loader.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/skills/__init__.py
@@ -2099,7 +2099,7 @@ class SkillLoader:
         return matched
 ```
 
-Create `skills/tdd-workflow.md`:
+创建 `skills/tdd-workflow.md`:
 ```markdown
 ---
 name: tdd-workflow
@@ -2115,12 +2115,12 @@ trigger: test,tdd,red-green,implement
 5. Repeat
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_skill_loader.py -v`
-Expected: PASS (4 tests)
+运行：`pytest tests/test_skill_loader.py -v`
+预期：PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/skills/ skills/tdd-workflow.md tests/test_skill_loader.py
@@ -2129,19 +2129,19 @@ git commit -m "feat: add SkillLoader for markdown skill files"
 
 ---
 
-## Phase 5: Infrastructure
+## Phase 5：基础设施设施
 
-### Task 14: Credential Manager
+### Task 14：凭据管理器
 
-**Files:**
-- Create: `src/codeguard/credentials/__init__.py`
-- Create: `src/codeguard/credentials/manager.py`
-- Test: `tests/test_credential_manager.py`
+**文件：**
+- 创建：`src/codeguard/credentials/__init__.py`
+- 创建：`src/codeguard/credentials/manager.py`
+- 测试：`tests/test_credential_manager.py`
 
-**Interfaces:**
-- Produces: `CredentialManager`
+**接口：**
+- 产出：`CredentialManager`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_credential_manager.py
@@ -2194,12 +2194,12 @@ def test_wrong_password_fails(tmp_workspace: Path):
     assert mgr2.unlock("wrong-password") is False
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_credential_manager.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_credential_manager.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/credentials/__init__.py
@@ -2286,12 +2286,12 @@ class CredentialManager:
         self._write_all(data)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_credential_manager.py -v`
-Expected: PASS (6 tests)
+运行：`pytest tests/test_credential_manager.py -v`
+预期：PASS (6 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/credentials/ tests/test_credential_manager.py
@@ -2300,18 +2300,18 @@ git commit -m "feat: add CredentialManager with Fernet encryption"
 
 ---
 
-### Task 15: MCP Tool Adapter
+### Task 15：MCP 工具适配器
 
-**Files:**
-- Create: `src/codeguard/mcp/__init__.py`
-- Create: `src/codeguard/mcp/adapter.py`
-- Test: `tests/test_mcp_adapter.py`
+**文件：**
+- 创建：`src/codeguard/mcp/__init__.py`
+- 创建：`src/codeguard/mcp/adapter.py`
+- 测试：`tests/test_mcp_adapter.py`
 
-**Interfaces:**
-- Consumes: `Tool`, `ToolDispatcher` from Task 4
-- Produces: `MCPToolAdapter`, `MCPToolWrapper`
+**接口：**
+- 消费：`Tool`, `ToolDispatcher` from Task 4
+- 产出：`MCPToolAdapter`, `MCPToolWrapper`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_mcp_adapter.py
@@ -2368,12 +2368,12 @@ async def test_connect_failure_does_not_block():
     assert len(dispatcher.list_tools()) == 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_mcp_adapter.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_mcp_adapter.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/mcp/__init__.py
@@ -2427,12 +2427,12 @@ class MCPToolAdapter:
         return registered
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_mcp_adapter.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_mcp_adapter.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/mcp/ tests/test_mcp_adapter.py
@@ -2441,20 +2441,20 @@ git commit -m "feat: add MCPToolAdapter for external MCP server tool registratio
 
 ---
 
-## Phase 6: Integration
+## Phase 6：集成
 
-### Task 16: Agent Loop
+### Task 16：Agent 主循环
 
-**Files:**
-- Create: `src/codeguard/agent/action.py`
-- Create: `src/codeguard/agent/loop.py`
-- Test: `tests/test_agent_loop.py`
+**文件：**
+- 创建：`src/codeguard/agent/action.py`
+- 创建：`src/codeguard/agent/loop.py`
+- 测试：`tests/test_agent_loop.py`
 
-**Interfaces:**
-- Consumes: All previous modules
-- Produces: `AgentLoop`, `parse_action()`
+**接口：**
+- 消费：All previous modules
+- 产出：`AgentLoop`, `parse_action()`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_agent_loop.py
@@ -2547,12 +2547,12 @@ async def test_agent_loop_guardrail_blocks_dangerous_action(tmp_workspace: Path)
     assert len(guardrail_steps) > 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_agent_loop.py -v`
-Expected: FAIL with `ModuleNotFoundError` or `ImportError`
+运行：`pytest tests/test_agent_loop.py -v`
+预期：FAIL with `ModuleNotFoundError` or `ImportError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/agent/action.py
@@ -2709,12 +2709,12 @@ class AgentLoop:
         return steps
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_agent_loop.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_agent_loop.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/agent/action.py src/codeguard/agent/loop.py tests/test_agent_loop.py
@@ -2723,18 +2723,18 @@ git commit -m "feat: add AgentLoop integrating all harness mechanisms"
 
 ---
 
-### Task 17: FastAPI Server + CLI
+### Task 17：FastAPI 服务器与 CLI
 
-**Files:**
-- Create: `src/codeguard/server.py`
-- Create: `src/codeguard/cli.py`
-- Test: `tests/test_server.py`
+**文件：**
+- 创建：`src/codeguard/server.py`
+- 创建：`src/codeguard/cli.py`
+- 测试：`tests/test_server.py`
 
-**Interfaces:**
-- Consumes: `AgentLoop` from Task 16, all modules
-- Produces: FastAPI app, CLI entry point
+**接口：**
+- 消费：`AgentLoop` from Task 16, all modules
+- 产出：FastAPI app, CLI entry point
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步骤 1：编写失败测试**
 
 ```python
 # tests/test_server.py
@@ -2776,12 +2776,12 @@ async def test_credentials_status(app):
         assert "configured" in resp.json()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **步骤 2：运行测试验证失败**
 
-Run: `pytest tests/test_server.py -v`
-Expected: FAIL with `ModuleNotFoundError`
+运行：`pytest tests/test_server.py -v`
+预期：FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **步骤 3：编写最小实现**
 
 ```python
 # src/codeguard/server.py
@@ -2892,12 +2892,12 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_server.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_server.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/server.py src/codeguard/cli.py tests/test_server.py
@@ -2906,28 +2906,28 @@ git commit -m "feat: add FastAPI server with REST + WebSocket endpoints"
 
 ---
 
-## Phase 7: Frontend
+## Phase 7：前端
 
-### Task 18: React Frontend
+### Task 18：React 前端
 
-**Files:**
-- Create: `frontend/package.json`
-- Create: `frontend/vite.config.ts`
-- Create: `frontend/index.html`
-- Create: `frontend/src/main.tsx`
-- Create: `frontend/src/App.tsx`
-- Create: `frontend/src/components/ChatPanel.tsx`
-- Create: `frontend/src/components/StepTimeline.tsx`
-- Create: `frontend/src/components/HITLDialog.tsx`
-- Create: `frontend/src/hooks/useWebSocket.ts`
+**文件：**
+- 创建：`frontend/package.json`
+- 创建：`frontend/vite.config.ts`
+- 创建：`frontend/index.html`
+- 创建：`frontend/src/main.tsx`
+- 创建：`frontend/src/App.tsx`
+- 创建：`frontend/src/components/ChatPanel.tsx`
+- 创建：`frontend/src/components/StepTimeline.tsx`
+- 创建：`frontend/src/components/HITLDialog.tsx`
+- 创建：`frontend/src/hooks/useWebSocket.ts`
 
-**Interfaces:**
-- Consumes: REST API + WebSocket from Task 17
-- Produces: React frontend served by FastAPI
+**接口：**
+- 消费：REST API + WebSocket from Task 17
+- 产出：React frontend served by FastAPI
 
-- [ ] **Step 1: Create frontend project structure**
+- [ ] **步骤 1：创建前端项目结构**
 
-Create `frontend/package.json`:
+创建 `frontend/package.json`:
 ```json
 {
   "name": "codeguard-frontend",
@@ -2953,7 +2953,7 @@ Create `frontend/package.json`:
 }
 ```
 
-Create `frontend/vite.config.ts`:
+创建 `frontend/vite.config.ts`:
 ```typescript
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -2972,7 +2972,7 @@ export default defineConfig({
 })
 ```
 
-Create `frontend/index.html`:
+创建 `frontend/index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="zh">
@@ -2988,9 +2988,9 @@ Create `frontend/index.html`:
 </html>
 ```
 
-- [ ] **Step 2: Create React components**
+- [ ] **步骤 2：创建 React 组件**
 
-Create `frontend/src/main.tsx`:
+创建 `frontend/src/main.tsx`:
 ```tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -3003,7 +3003,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 ```
 
-Create `frontend/src/App.tsx`:
+创建 `frontend/src/App.tsx`:
 ```tsx
 import { useState, useCallback } from 'react'
 import ChatPanel from './components/ChatPanel'
@@ -3071,7 +3071,7 @@ export default function App() {
 }
 ```
 
-Create `frontend/src/hooks/useWebSocket.ts`:
+创建 `frontend/src/hooks/useWebSocket.ts`:
 ```typescript
 import { useRef, useCallback } from 'react'
 
@@ -3103,7 +3103,7 @@ export function useWebSocket({ onStep, onHITL }: {
 }
 ```
 
-Create `frontend/src/components/ChatPanel.tsx`:
+创建 `frontend/src/components/ChatPanel.tsx`:
 ```tsx
 import { useState } from 'react'
 
@@ -3132,7 +3132,7 @@ export default function ChatPanel({ onSend }: { onSend: (msg: string) => void })
 }
 ```
 
-Create `frontend/src/components/StepTimeline.tsx`:
+创建 `frontend/src/components/StepTimeline.tsx`:
 ```tsx
 interface Step {
   step_index: number
@@ -3176,7 +3176,7 @@ export default function StepTimeline({ steps }: { steps: Step[] }) {
 }
 ```
 
-Create `frontend/src/components/HITLDialog.tsx`:
+创建 `frontend/src/components/HITLDialog.tsx`:
 ```tsx
 export default function HITLDialog({
   request,
@@ -3211,17 +3211,17 @@ export default function HITLDialog({
 }
 ```
 
-- [ ] **Step 3: Build frontend**
+- [ ] **步骤 3：构建前端**
 
-Run: `cd frontend && npm install && npm run build`
-Expected: `frontend/dist/` directory created with built files
+运行：`cd frontend && npm install && npm run build`
+预期：`frontend/dist/` directory created with built files
 
-- [ ] **Step 4: Copy built files to static**
+- [ ] **步骤 4：复制构建产物到 static 目录**
 
-Run: `mkdir -p src/codeguard/static && cp -r frontend/dist/* src/codeguard/static/`
-Expected: Static files in place
+运行：`mkdir -p src/codeguard/static && cp -r frontend/dist/* src/codeguard/static/`
+预期：Static files in place
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add frontend/ src/codeguard/static/
@@ -3230,18 +3230,18 @@ git commit -m "feat: add React frontend with ChatPanel, StepTimeline, HITLDialog
 
 ---
 
-## Phase 8: Distribution & Demo
+## Phase 8：分发与演示
 
-### Task 19: Dockerfile + CI
+### Task 19：Dockerfile 与 CI
 
-**Files:**
-- Create: `Dockerfile`
-- Create: `docker-compose.yml`
-- Create: `.gitlab-ci.yml`
-- Create: `config/guardrails.yaml`
-- Create: `config/mcp_servers.yaml`
+**文件：**
+- 创建：`Dockerfile`
+- 创建：`docker-compose.yml`
+- 创建：`.gitlab-ci.yml`
+- 创建：`config/guardrails.yaml`
+- 创建：`config/mcp_servers.yaml`
 
-- [ ] **Step 1: Create Dockerfile**
+- [ ] **步骤 1：创建 Dockerfile**
 
 ```dockerfile
 # Frontend build stage
@@ -3271,7 +3271,7 @@ EXPOSE 8000
 CMD ["python", "-m", "codeguard", "serve"]
 ```
 
-- [ ] **Step 2: Create docker-compose.yml**
+- [ ] **步骤 2：创建 docker-compose.yml**
 
 ```yaml
 version: "3.8"
@@ -3291,7 +3291,7 @@ volumes:
   codeguard-data:
 ```
 
-- [ ] **Step 3: Create .gitlab-ci.yml**
+- [ ] **步骤 3：创建 .gitlab-ci.yml**
 
 ```yaml
 stages:
@@ -3324,9 +3324,9 @@ docker-build:
     - master
 ```
 
-- [ ] **Step 4: Create config files**
+- [ ] **步骤 4：创建配置文件**
 
-Create `config/guardrails.yaml`:
+创建 `config/guardrails.yaml`:
 ```yaml
 # Custom guardrail rules (in addition to built-in R001-R011)
 rules:
@@ -3337,7 +3337,7 @@ rules:
     reason: "kubectl delete is destructive"
 ```
 
-Create `config/mcp_servers.yaml`:
+创建 `config/mcp_servers.yaml`:
 ```yaml
 # MCP server configurations
 servers:
@@ -3347,7 +3347,7 @@ servers:
     enabled: false
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add Dockerfile docker-compose.yml .gitlab-ci.yml config/
@@ -3356,17 +3356,17 @@ git commit -m "feat: add Dockerfile, CI config, and guardrail/MCP config files"
 
 ---
 
-### Task 20: Mechanism Demo
+### Task 20：机制演示
 
-**Files:**
-- Create: `demo/mechanism_demo.py`
-- Create: `src/codeguard/demo.py`
+**文件：**
+- 创建：`demo/mechanism_demo.py`
+- 创建：`src/codeguard/demo.py`
 
-**Interfaces:**
-- Consumes: All modules
-- Produces: Deterministic demo script
+**接口：**
+- 消费：All modules
+- 产出：Deterministic demo script
 
-- [ ] **Step 1: Write the demo script**
+- [ ] **步骤 1：编写演示脚本**
 
 ```python
 # src/codeguard/demo.py
@@ -3490,12 +3490,12 @@ if __name__ == "__main__":
     run_demo()
 ```
 
-- [ ] **Step 2: Run demo to verify it works**
+- [ ] **步骤 2：运行演示验证可用**
 
-Run: `python -m codeguard demo`
-Expected: All 3 demos pass
+运行：`python -m codeguard demo`
+预期：All 3 demos pass
 
-- [ ] **Step 3: Write a test for the demo**
+- [ ] **步骤 3：编写演示测试**
 
 ```python
 # tests/test_demo.py
@@ -3530,12 +3530,12 @@ async def test_demo_3(tmp_path: Path):
     await demo_3_scope_fence(tmp_path)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **步骤 4：运行测试验证通过**
 
-Run: `pytest tests/test_demo.py -v`
-Expected: PASS (3 tests)
+运行：`pytest tests/test_demo.py -v`
+预期：PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
 ```bash
 git add src/codeguard/demo.py demo/ tests/test_demo.py
@@ -3546,10 +3546,10 @@ git commit -m "feat: add mechanism demo with 3 deterministic governance behavior
 
 ### Task 21: README
 
-**Files:**
-- Create: `README.md`
+**文件：**
+- 创建：`README.md`
 
-- [ ] **Step 1: Write README.md**
+- [ ] **步骤 1：编写 README.md**
 
 ```markdown
 # CodeGuard
@@ -3651,7 +3651,7 @@ Agent Main Loop
 MIT
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步骤 2：提交**
 
 ```bash
 git add README.md
@@ -3660,7 +3660,7 @@ git commit -m "docs: add README with setup, usage, and architecture overview"
 
 ---
 
-## Task Dependency Graph
+## 任务依赖图
 
 ```
 Phase 1 (Foundation):
@@ -3697,37 +3697,37 @@ Phase 8 (Distribution):
   Task 21 (README) ── (depends on all)
 ```
 
-## Parallelizable Tasks
+## 可并行任务
 
-- Phase 3 (Tasks 7-10) can be parallelized — all depend only on Task 2
-- Phase 4 (Tasks 11-13) can be parallelized — all depend only on Task 2
-- Task 14 and Task 15 can be parallelized — depend on Tasks 2 and 4
+- Phase 3（Task 7-10）可并行 — 全部仅依赖 Task 2
+- Phase 4（Task 11-13）可并行 — 全部仅依赖 Task 2
+- Task 14 和 Task 15 可并行 — 依赖 Task 2 和 Task 4
 
 ---
 
-## Self-Review
+## 自审
 
-**1. Spec coverage:**
-- ✅ Agent main loop → Task 16
-- ✅ LLM abstraction layer (mockable) → Task 3
-- ✅ Tool dispatch → Task 4
-- ✅ Built-in tools → Tasks 5, 6
-- ✅ Guardrail engine (12 rules) → Task 7
-- ✅ HITL state machine → Task 9
-- ✅ Scope fence → Task 8
-- ✅ Audit log → Task 10
-- ✅ Feedback validators → Task 11
-- ✅ Memory store → Task 12
-- ✅ Skill loader → Task 13
-- ✅ MCP adapter → Task 15
-- ✅ Credential manager → Task 14
-- ✅ FastAPI server → Task 17
-- ✅ React frontend → Task 18
-- ✅ Docker distribution → Task 19
-- ✅ CI (unit-test job) → Task 19
-- ✅ Mechanism demo → Task 20
+**1. SPEC 覆盖率：**
+- ✅ Agent 主循环 → Task 16
+- ✅ LLM 抽象层（可 mock）→ Task 3
+- ✅ 工具分发 → Task 4
+- ✅ 内置工具 → Task 5, 6
+- ✅ 护栏引擎（12 条规则）→ Task 7
+- ✅ HITL 状态机 → Task 9
+- ✅ 范围围栏 → Task 8
+- ✅ 审计日志 → Task 10
+- ✅ 反馈验证器 → Task 11
+- ✅ 记忆存储 → Task 12
+- ✅ 技能加载器 → Task 13
+- ✅ MCP 适配器 → Task 15
+- ✅ 凭据管理器 → Task 14
+- ✅ FastAPI 服务器 → Task 17
+- ✅ React 前端 → Task 18
+- ✅ Docker 分发 → Task 19
+- ✅ CI（unit-test job）→ Task 19
+- ✅ 机制演示 → Task 20
 - ✅ README → Task 21
 
-**2. Placeholder scan:** No TBD/TODO/FIXME. `<user>` in Docker commands is a placeholder for actual GitHub username — filled at deployment time.
+**2. 占位符扫描：** 无 TBD/TODO/FIXME。Docker 命令中的 `<user>` 是实际 GitHub 用户名的占位符 — 部署时填入。
 
-**3. Type consistency:** All interfaces use consistent types from Task 2 (entities.py). Method names consistent across tasks (e.g., `check()` in GuardrailEngine, `dispatch()` in ToolDispatcher, `validate()` in validators).
+**3. 类型一致性：** 所有接口使用 Task 2（entities.py）中定义的一致类型。方法名在各个 task 间一致（如 GuardrailEngine 的 `check()`、ToolDispatcher 的 `dispatch()`、验证器的 `validate()`）。
