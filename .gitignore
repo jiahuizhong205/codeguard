@@ -3,6 +3,7 @@
 .codeguard/credentials.json
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 
