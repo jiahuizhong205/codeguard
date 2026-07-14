@@ -22,12 +22,19 @@ class MockLLMClient(LLMClient):
 
 class RealLLMClient(LLMClient):
     def __init__(self, base_url: str, api_key: str, model: str = "gpt-4"):
-        self._base_url = base_url
+        self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._model = model
 
     async def call(self, messages: list[Message]) -> LLMResponse:
         import httpx
+
+        url = self._base_url
+        if not url.endswith("/v1/chat/completions"):
+            if url.endswith("/v1"):
+                url = f"{url}/chat/completions"
+            else:
+                url = f"{url}/v1/chat/completions"
 
         headers = {"Authorization": f"Bearer {self._api_key}"}
         payload = {
@@ -36,7 +43,7 @@ class RealLLMClient(LLMClient):
         }
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                f"{self._base_url}/v1/chat/completions",
+                url,
                 headers=headers,
                 json=payload,
                 timeout=60.0,
