@@ -1,31 +1,31 @@
 # CodeGuard
 
-A governance-focused Coding Agent Harness built from scratch — no LangChain, no AutoGen, just Python.
+一个以治理为核心的 Coding Agent Harness —— 从零实现，不依赖 LangChain、AutoGen 等现成框架，纯 Python 构建。
 
-## What is CodeGuard?
+## CodeGuard 是什么？
 
-CodeGuard is a Coding Agent Harness that implements the full agent loop (context → LLM → action → guardrail → tool → feedback → stop) with a deep focus on **governance**: guardrails, HITL state machine, scope fence, and audit logging.
+CodeGuard 是一个 Coding Agent Harness，实现了完整的 agent 主循环（组织上下文 → 调用 LLM → 解析动作 → 护栏检查 → 工具执行 → 反馈回灌 → 停机判断），并深入聚焦**治理**维度：护栏引擎、HITL 状态机、范围围栏和审计日志。
 
-Every core mechanism is deterministic code testable with mock LLM — no prompts pretending to be safety mechanisms.
+每个核心机制都是确定性代码，可用 mock LLM 进行单元测试 —— 没有任何"用提示词假装安全机制"的设计。
 
-## Quick Start
+## 快速开始
 
-### Docker (Recommended)
+### Docker（推荐）
 
 ```bash
-# Pull and run
+# 拉取镜像
 docker pull ghcr.io/jiahuizhong205/codeguard:latest
 
-# First run: configure credentials
+# 首次运行：配置凭据
 docker run -it -p 8000:8000 -v codeguard-data:/data codeguard:latest init
 
-# Start server
+# 启动服务
 docker run -p 8000:8000 -v codeguard-data:/data -v /path/to/workspace:/workspace codeguard:latest serve
 ```
 
-Open http://localhost:8000 in your browser.
+在浏览器中打开 http://localhost:8000。
 
-### From Source
+### 从源码运行
 
 ```bash
 git clone https://github.com/jiahuizhong205/codeguard.git
@@ -35,63 +35,63 @@ codeguard init
 codeguard serve
 ```
 
-## Credential Security
+## 凭据安全
 
-- API keys are encrypted with Fernet (master password)
-- Keys never hardcoded, never in git, never in logs
-- First run guides you through secure setup
-- Check status: `codeguard credentials status` (no plaintext shown)
+- API key 使用 Fernet 对称加密存储（需主密码解锁）
+- key 绝不硬编码、绝不进 Git、绝不进日志
+- 首次运行引导式安全录入
+- 查看状态：`codeguard credentials status`（不回显明文）
 
-## Mechanism Demo
+## 机制演示
 
 ```bash
 codeguard demo
 ```
 
-Demonstrates 3 governance behaviors under mock LLM:
-1. Guardrail blocks `rm -rf`
-2. Feedback loop drives self-correction
-3. Scope fence blocks path escape
+在 mock LLM 下确定性复现 3 个治理行为：
+1. 护栏拦截 `rm -rf` 危险命令
+2. 反馈闭环驱动 agent 自我修正
+3. 范围围栏拦截 workspace 路径逃逸
 
-## Testing
+## 测试
 
 ```bash
 make test
 ```
 
-All core mechanisms have deterministic unit tests with mock LLM.
+所有核心机制均有基于 mock LLM 的确定性单元测试。
 
-## Architecture
+## 架构
 
 ```
-Agent Main Loop
-├── LLM Client (mockable)
-├── Tool Dispatcher
-│   ├── Built-in Tools (file, shell, test, lint)
-│   └── MCP Tool Adapter (external tools)
-├── Guardrail Engine (11 rules, configurable)
-├── HITL Manager (state machine)
-├── Scope Fence (workspace boundary)
-├── Audit Log (JSONL, sanitized)
-├── Feedback Validators (test, lint)
-├── Memory Store (cross-session JSON)
-└── Skill Loader (markdown skills)
+Agent 主循环
+├── LLM 客户端（可注入 mock）
+├── 工具分发器
+│   ├── 内置工具（文件读写、Shell、测试、Lint）
+│   └── MCP 工具适配器（外部工具服务）
+├── 护栏引擎（11 条内置规则，可 YAML 扩展）
+├── HITL 管理器（审批状态机）
+├── 范围围栏（workspace 边界 enforcement）
+├── 审计日志（JSONL 格式，参数脱敏）
+├── 反馈验证器（测试、Lint）
+├── 记忆存储（跨会话 JSON）
+└── 技能加载器（Markdown 技能文件）
 ```
 
-## Tech Stack
+## 技术栈
 
-- Python 3.12, FastAPI, pytest
-- React + Vite (frontend)
-- Docker (distribution)
-- cryptography/Fernet (credential encryption)
+- Python 3.12、FastAPI、pytest
+- React + Vite（前端）
+- Docker（分发）
+- cryptography/Fernet（凭据加密）
 
-## Known Limitations
+## 已知限制
 
-- Requires Docker (or Python 3.12+ from source)
-- Workspace must be mounted into container
-- MCP servers must be accessible from container
-- No system keyring in Docker (uses encrypted file)
+- 需要 Docker（或从源码运行需 Python 3.12+）
+- workspace 需挂载到容器内
+- MCP 服务器需在容器内可访问
+- Docker 内无系统钥匙串（使用加密文件方案）
 
-## License
+## 许可证
 
 MIT
