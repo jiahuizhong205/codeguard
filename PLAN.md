@@ -81,7 +81,7 @@ src/codeguard/
 - 创建：`tests/conftest.py`
 
 **接口：**
-- 产出：project structure, `make test` command
+- 产出：项目结构、`make test` 命令
 
 - [ ] **步骤 1：创建 pyproject.toml**
 
@@ -2129,7 +2129,7 @@ git commit -m "feat: add SkillLoader for markdown skill files"
 
 ---
 
-## Phase 5：基础设施设施
+## Phase 5：基础服务
 
 ### Task 14：凭据管理器
 
@@ -2451,7 +2451,7 @@ git commit -m "feat: add MCPToolAdapter for external MCP server tool registratio
 - 测试：`tests/test_agent_loop.py`
 
 **接口：**
-- 消费：All previous modules
+- 消费：之前所有模块
 - 产出：`AgentLoop`, `parse_action()`
 
 - [ ] **步骤 1：编写失败测试**
@@ -2732,7 +2732,7 @@ git commit -m "feat: add AgentLoop integrating all harness mechanisms"
 
 **接口：**
 - 消费：`AgentLoop` from Task 16, all modules
-- 产出：FastAPI app, CLI entry point
+- 产出：FastAPI 应用、CLI 入口
 
 - [ ] **步骤 1：编写失败测试**
 
@@ -2922,8 +2922,8 @@ git commit -m "feat: add FastAPI server with REST + WebSocket endpoints"
 - 创建：`frontend/src/hooks/useWebSocket.ts`
 
 **接口：**
-- 消费：REST API + WebSocket from Task 17
-- 产出：React frontend served by FastAPI
+- 消费：来自 Task 17 的 REST API + WebSocket
+- 产出：由 FastAPI 提供服务的 React 前端
 
 - [ ] **步骤 1：创建前端项目结构**
 
@@ -3363,8 +3363,8 @@ git commit -m "feat: add Dockerfile, CI config, and guardrail/MCP config files"
 - 创建：`src/codeguard/demo.py`
 
 **接口：**
-- 消费：All modules
-- 产出：Deterministic demo script
+- 消费：所有模块
+- 产出：确定性演示脚本
 
 - [ ] **步骤 1：编写演示脚本**
 
@@ -3544,7 +3544,7 @@ git commit -m "feat: add mechanism demo with 3 deterministic governance behavior
 
 ---
 
-### Task 21: README
+### Task 21：README 文档
 
 **文件：**
 - 创建：`README.md`
@@ -3554,32 +3554,32 @@ git commit -m "feat: add mechanism demo with 3 deterministic governance behavior
 ```markdown
 # CodeGuard
 
-A governance-focused Coding Agent Harness built from scratch — no LangChain, no AutoGen, just Python.
+一个以治理为核心的 Coding Agent Harness，从零构建 — 不依赖 LangChain、AutoGen，纯 Python 实现。
 
-## What is CodeGuard?
+## 什么是 CodeGuard？
 
-CodeGuard is a Coding Agent Harness that implements the full agent loop (context → LLM → action → guardrail → tool → feedback → stop) with a deep focus on **governance**: guardrails, HITL state machine, scope fence, and audit logging.
+CodeGuard 是一个 Coding Agent Harness，实现了完整的 Agent 主循环（上下文 → LLM → 动作 → 护栏 → 工具 → 反馈 → 停止），并深入聚焦**治理**维度：护栏引擎、HITL 状态机、范围围栏和审计日志。
 
-Every core mechanism is deterministic code testable with mock LLM — no prompts pretending to be safety mechanisms.
+每个核心机制都是可通过 mock LLM 测试的确定性代码 — 而非用提示词伪装成安全机制。
 
-## Quick Start
+## 快速开始
 
-### Docker (Recommended)
+### Docker（推荐）
 
 ```bash
-# Pull and run
+# 拉取并运行
 docker pull ghcr.io/<user>/codeguard:latest
 
-# First run: configure credentials
+# 首次运行：配置凭据
 docker run -it -p 8000:8000 -v codeguard-data:/data codeguard:latest init
 
-# Start server
+# 启动服务
 docker run -p 8000:8000 -v codeguard-data:/data -v /path/to/workspace:/workspace codeguard:latest serve
 ```
 
-Open http://localhost:8000 in your browser.
+在浏览器中打开 http://localhost:8000。
 
-### From Source
+### 从源码运行
 
 ```bash
 git clone https://github.com/<user>/codeguard.git
@@ -3589,64 +3589,64 @@ codeguard init
 codeguard serve
 ```
 
-## Credential Security
+## 凭据安全
 
-- API keys are encrypted with Fernet (master password)
-- Keys never hardcoded, never in git, never in logs
-- First run guides you through secure setup
-- Check status: `codeguard credentials status` (no plaintext shown)
+- API 密钥使用 Fernet 加密（主密码保护）
+- 密钥绝不硬编码、绝不进 Git、绝不进日志
+- 首次运行引导完成安全设置
+- 检查状态：`codeguard credentials status`（不显示明文）
 
-## Mechanism Demo
+## 机制演示
 
 ```bash
 codeguard demo
 ```
 
-Demonstrates 3 governance behaviors under mock LLM:
-1. Guardrail blocks `rm -rf`
-2. Feedback loop drives self-correction
-3. Scope fence blocks path escape
+在 mock LLM 下演示 3 种治理行为：
+1. 护栏拦截 `rm -rf`
+2. 反馈循环驱动自我修正
+3. 范围围栏阻止路径越界
 
-## Testing
+## 测试
 
 ```bash
 make test
 ```
 
-All core mechanisms have deterministic unit tests with mock LLM.
+所有核心机制都有基于 mock LLM 的确定性单元测试。
 
-## Architecture
+## 架构
 
 ```
-Agent Main Loop
-├── LLM Client (mockable)
-├── Tool Dispatcher
-│   ├── Built-in Tools (file, shell, test, lint)
-│   └── MCP Tool Adapter (external tools)
-├── Guardrail Engine (12 rules, configurable)
-├── HITL Manager (state machine)
-├── Scope Fence (workspace boundary)
-├── Audit Log (JSONL, sanitized)
-├── Feedback Validators (test, lint)
-├── Memory Store (cross-session JSON)
-└── Skill Loader (markdown skills)
+Agent 主循环
+├── LLM 客户端（可 mock）
+├── 工具分发器
+│   ├── 内置工具（文件、Shell、测试、Lint）
+│   └── MCP 工具适配器（外部工具）
+├── 护栏引擎（12 条规则，可配置）
+├── HITL 管理器（状态机）
+├── 范围围栏（工作区边界）
+├── 审计日志（JSONL 格式，已脱敏）
+├── 反馈验证器（测试、Lint）
+├── 记忆存储（跨会话 JSON）
+└── 技能加载器（Markdown 技能文件）
 ```
 
-## Tech Stack
+## 技术栈
 
-- Python 3.12, FastAPI, pytest
-- React + Vite (frontend)
-- Docker (distribution)
-- cryptography/Fernet (credential encryption)
+- Python 3.12、FastAPI、pytest
+- React + Vite（前端）
+- Docker（分发）
+- cryptography/Fernet（凭据加密）
 
-## Known Limitations
+## 已知限制
 
-- Requires Docker (or Python 3.12+ from source)
-- Workspace must be mounted into container
-- MCP servers must be accessible from container
-- No system keyring in Docker (uses encrypted file)
+- 需要 Docker（或从源码运行需 Python 3.12+）
+- 工作区需挂载到容器内
+- MCP 服务器需在容器内可访问
+- Docker 中无系统密钥环（使用加密文件替代）
 
-## License
+## 许可证
 
 MIT
 ```

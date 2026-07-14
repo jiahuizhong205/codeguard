@@ -1,0 +1,7 @@
+# CodeGuard 自定义护栏规则（补充内置 R001-R011）
+rules:
+  - id: R012
+    type: shell
+    pattern: "kubectl\\s+delete"
+    level: ask
+    reason: "kubectl delete is destructive"
