@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  codeguard:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - codeguard-data:/data
+      - ./workspace:/workspace
+    environment:
+      - CODEGUARD_WORKSPACE=/workspace
+      - CODEGUARD_DATA=/data
+
+volumes:
+  codeguard-data:

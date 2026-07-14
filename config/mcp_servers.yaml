@@ -1,0 +1,5 @@
+servers:
+  - name: open-design
+    command: "od"
+    args: ["mcp", "serve"]
+    enabled: false
