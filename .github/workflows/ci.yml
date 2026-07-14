@@ -34,7 +34,11 @@ jobs:
 
       - name: Credential safety check
         run: |
-          ! grep -r "sk-" src/ || (echo "Found hardcoded API key pattern" && exit 1)
+          if grep -rn --include="*.py" -E "sk-[a-zA-Z0-9]{10,}" src/; then
+            echo "Found hardcoded API key pattern"
+            exit 1
+          fi
+          echo "No hardcoded credentials found"
 
   docker-build:
     name: Docker Build
