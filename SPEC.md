@@ -504,17 +504,66 @@ class CredentialManager:
 
 ### 3.15 前端（React + Vite）
 
-| 组件 | 功能 |
-|------|------|
-| ChatPanel | 任务输入 + 消息流 |
-| StepTimeline | 实时展示 agent 每一步（类型、内容、时间戳） |
-| HITLDialog | 护栏拦截确认弹窗（approve/deny） |
-| FeedbackPanel | 测试/lint 反馈展示 |
-| MemoryViewer | 记忆内容查看 |
-| SkillList | 已加载技能列表 |
-| ConfigPanel | 凭据状态 + 配置 |
+前端采用**双视图架构**：落地页（Landing Page）+ 应用控制台（App Console），统一深色主题设计系统。
 
-前端使用 Open Design（od CLI MCP 服务）进行界面开发，在 SPEC 中说明所选设计系统为 Open Design。
+#### 3.15.1 设计系统与工具链
+
+| 项 | 说明 |
+|---|---|
+| **设计工具** | Open Design（od CLI MCP 服务，v0.14.1） |
+| **生成 Agent** | Claude Code（通过 Open Design `start_run` 调度） |
+| **设计系统** | Open Design 内置深色主题（Dark Theme），靛蓝/紫色 accent 色系 |
+| **Skill** | 未使用预置 Skill（`skills` 列表为空），通过 `start_run` prompt 直接描述设计需求 |
+| **字体** | SF Pro Display（标题）/ SF Pro Text（正文）/ JetBrains Mono（代码） |
+| **CSS 变量** | 提取为共享 `styles.css`，落地页与应用页共用同一套设计 token |
+
+#### 3.15.2 Open Design 生成流程
+
+1. **启动守护进程**：通过 Electron 二进制 + `ELECTRON_RUN_AS_NODE=1` 环境变量启动 Open Design daemon（监听 `127.0.0.1:7456`）
+2. **创建项目**：`open-design_create_project` 创建 `codeguard-frontend` 项目
+3. **启动生成**：`open-design_start_run` 指定 `agent: "claude"`，prompt 描述落地页需求（英雄区、功能卡片、聊天演示、工作流、CTA）
+4. **轮询状态**：`open-design_get_run` 每 30-60s 轮询，Claude Code agent 在 5-30 分钟内完成生成
+5. **获取产物**：`open-design_get_artifact` 获取生成的 `index.html`（25KB，含完整内联 CSS）
+6. **集成到 React**：将 HTML 转为 `LandingPage.tsx` 组件，提取 CSS 变量到 `styles.css`
+
+#### 3.15.3 组件清单
+
+| 组件 | 功能 | 后端 API |
+|------|------|----------|
+| LandingPage | 落地页（英雄区/功能卡片/聊天演示/工作流/CTA） | 无（纯展示，"查看演示"按钮切换到应用页） |
+| App.tsx | 路由切换 + session 管理 + WebSocket 连接 | `POST /api/session`、`GET /api/credentials/status` |
+| ChatPanel | 深色主题聊天面板，消息列表 + 输入框 | `POST /api/session/{id}/message` + WebSocket |
+| StepTimeline | 步骤时间线，7 种步骤类型颜色标识 | WebSocket `onStep` 回调 |
+| HITLDialog | 模态审批对话框（批准/拒绝） | `POST /api/session/{id}/approve` |
+| useWebSocket | WebSocket hook，支持 onStep/onHITL/onConnected/onDone | `WS /ws/session/{id}` |
+
+#### 3.15.4 设计 Token（CSS 变量）
+
+```css
+:root {
+  --bg: #0a0b14;              /* 主背景 */
+  --bg-raised: #11131f;       /* 次背景 */
+  --surface: #161825;         /* 卡片背景 */
+  --fg: #e8eaf0;              /* 主文字 */
+  --fg-dim: #a0a4b8;          /* 次文字 */
+  --accent: #7c5cf0;          /* 主强调色（靛蓝） */
+  --accent-2: #a78bfa;        /* 次强调色（紫色） */
+  --gradient-accent: linear-gradient(135deg, #7c5cf0, #6366f1, #8b5cf6);
+  --radius: 12px;             /* 圆角 */
+  --font-display: 'SF Pro Display', ...;
+  --font-mono: 'JetBrains Mono', ...;
+}
+```
+
+#### 3.15.5 前端-后端 API 对接
+
+| 前端按钮/交互 | 后端端点 | 方法 |
+|---------------|---------|------|
+| "查看演示"/"进入控制台" | `POST /api/session` | 创建会话 + 连接 WebSocket |
+| 聊天输入框发送 | `POST /api/session/{id}/message` | 发送编码任务 |
+| WebSocket 实时步骤 | `WS /ws/session/{id}` | 接收 step/hitl/done/error 事件 |
+| HITL 批准/拒绝 | `POST /api/session/{id}/approve` | 人工审批决策 |
+| 顶栏 LLM 状态 | `GET /api/credentials/status` | 显示 LLM 配置状态 |
 
 ---
 
@@ -917,7 +966,27 @@ docker run -p 8000:8000 -v codeguard-data:/data -v /path/to/workspace:/workspace
 
 ### 8.1 前端设计系统
 
-前端 UI 使用 **Open Design**（od CLI MCP 服务）进行界面开发。Open Design 提供设计系统和组件生成能力，通过 MCP 协议与编码智能体集成。在实现阶段，通过 od CLI 生成 React 组件，确保界面一致性和设计规范。
+前端 UI 使用 **Open Design**（od CLI MCP 服务，v0.14.1）进行界面开发，满足作业要求"凡涉及前端 / UI，强烈推荐使用 Open Design 进行界面开发，并在 SPEC 中说明所选设计系统与 skill"。
+
+**所选设计系统：** Open Design 内置深色主题（Dark Theme），靛蓝/紫色 accent 色系。
+
+**所选 Skill：** 项目生成时 Open Design 的 Skills 列表为空（`skills: []`），因此未使用预置 Skill。通过 `open-design_start_run` 直接以 prompt 描述设计需求，由 Claude Code agent 自主完成生成。
+
+**生成流程：**
+
+1. 启动 Open Design daemon（Electron 二进制 + `ELECTRON_RUN_AS_NODE=1`，监听 `127.0.0.1:7456`）
+2. `open-design_create_project` 创建项目 `codeguard-frontend`
+3. `open-design_start_run(agent="claude", prompt=...)` 启动生成
+4. Claude Code agent 在约 3 分钟内生成 25KB 的 `index.html`（含完整内联 CSS）
+5. `open-design_get_artifact` 获取产物，转为 React 组件集成到项目
+
+**生成结果（Claude Code 自检报告）：**
+
+- Anti-slop 检查通过（无紫色渐变滥用、无通用 emoji 图标堆叠、无虚假指标）
+- 5 维评分：哲学 4/5 · 层级 4/5 · 执行 4/5 · 特异性 5/5 · 克制 4/5
+- 包含模块：导航栏、英雄区、功能卡片（Guardrails/HITL/Scope Fence/Audit Log）、聊天演示面板、工作流步骤、CTA + Footer
+
+**集成方式：** 落地页 HTML 转为 `LandingPage.tsx` React 组件，CSS 变量提取到共享 `styles.css`，应用页组件（ChatPanel/StepTimeline/HITLDialog）复用同一套设计 token，确保视觉一致性。所有应用页按钮均对接后端 API（详见 §3.15.5）。
 
 ---
 
