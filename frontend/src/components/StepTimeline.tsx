@@ -5,34 +5,30 @@ interface Step {
   created_at?: string
 }
 
-export default function StepTimeline({ steps }: { steps: Step[] }) {
-  const colors: Record<string, string> = {
-    think: '#4a90d9',
-    action: '#f5a623',
-    tool_call: '#7ed321',
-    guardrail: '#d0021b',
-    feedback: '#9013fe',
-    hitl: '#f8e71c',
-    result: '#50e3c2',
-  }
+const STEP_LABELS: Record<string, string> = {
+  think: '思考',
+  action: '操作',
+  tool_call: '工具调用',
+  guardrail: '防护栏',
+  feedback: '反馈',
+  hitl: '人工审批',
+  result: '结果',
+}
 
+export default function StepTimeline({ steps }: { steps: Step[] }) {
   return (
-    <div>
-      <h2>Agent Steps</h2>
+    <div className="step-timeline">
       {steps.map((step, i) => (
-        <div key={i} style={{
-          borderLeft: `4px solid ${colors[step.step_type] || '#ccc'}`,
-          padding: '8px 12px',
-          marginBottom: '8px',
-          background: '#f9f9f9',
-        }}>
-          <strong>[{step.step_type}]</strong>{' '}
-          <span style={{ fontSize: '0.9em', color: '#666' }}>
-            Step {step.step_index}
-          </span>
-          <pre style={{ marginTop: '4px', fontSize: '0.85em', whiteSpace: 'pre-wrap' }}>
+        <div key={i} className={`step-item step-${step.step_type}`}>
+          <div className="step-header">
+            <span className={`step-badge step-${step.step_type}`}>
+              {STEP_LABELS[step.step_type] || step.step_type}
+            </span>
+            <span className="step-index">#{step.step_index}</span>
+          </div>
+          <div className="step-content">
             {typeof step.content === 'string' ? step.content : JSON.stringify(step.content, null, 2)}
-          </pre>
+          </div>
         </div>
       ))}
     </div>
