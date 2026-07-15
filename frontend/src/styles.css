@@ -188,6 +188,7 @@ body {
 .step-item.step-feedback { border-left-color: var(--color-feedback); }
 .step-item.step-hitl { border-left-color: var(--color-hitl); }
 .step-item.step-result { border-left-color: var(--color-result); }
+.step-item.step-file_output { border-left-color: var(--accent); }
 .step-header {
   display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
 }
@@ -203,6 +204,7 @@ body {
 .step-badge.step-feedback { background: rgba(144, 19, 254, 0.15); color: #b06bf0; }
 .step-badge.step-hitl { background: rgba(248, 231, 44, 0.15); color: #d4c12a; }
 .step-badge.step-result { background: rgba(80, 227, 194, 0.15); color: #50e3c2; }
+.step-badge.step-file_output { background: rgba(124, 92, 240, 0.15); color: var(--accent-2); }
 .step-index { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
 .step-content {
   font-size: 13px; color: var(--fg-dim); line-height: 1.55;
@@ -263,3 +265,33 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── File Preview ────────────── */
+.file-preview-section { margin-bottom: 24px; }
+.file-preview-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+}
+.file-preview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--bg-raised);
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.file-preview-info { display: flex; align-items: center; gap: 10px; }
+.file-preview-icon { font-size: 18px; }
+.file-preview-name {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--fg);
+}
+.file-preview-lang {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  background: rgba(124, 92, 240, 0.15); color: var(--accent-2);
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.03em;
+}
+.file-preview-size { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.file-preview-actions { display: flex; gap: 6px; }
+.file-preview-code {
+  padding: 16px; margin: 0; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
+  color: var(--fg-dim); background: var(--bg);
+  max-height: 400px; overflow-y: auto;
+}

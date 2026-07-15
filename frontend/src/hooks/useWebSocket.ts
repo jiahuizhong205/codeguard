@@ -3,11 +3,13 @@ import { useRef, useCallback } from 'react'
 export function useWebSocket({
   onStep,
   onHITL,
+  onFileOutput,
   onConnected,
   onDone,
 }: {
   onStep: (step: any) => void
   onHITL: (req: any) => void
+  onFileOutput?: (filename: string, content: string, size: number) => void
   onConnected?: () => void
   onDone?: () => void
 }) {
@@ -23,7 +25,12 @@ export function useWebSocket({
       if (data.type === 'connected') {
         onConnected?.()
       } else if (data.type === 'step') {
-        onStep(data.step)
+        const step = data.step
+        if (step.step_type === 'file_output' && onFileOutput) {
+          const content = typeof step.content === 'string' ? JSON.parse(step.content) : step.content
+          onFileOutput(content.filename, content.content, content.size)
+        }
+        onStep(step)
       } else if (data.type === 'hitl') {
         onHITL(data.request)
       } else if (data.type === 'done') {
@@ -42,7 +49,7 @@ export function useWebSocket({
       wsRef.current = null
       onDone?.()
     }
-  }, [onStep, onHITL, onConnected, onDone])
+  }, [onStep, onHITL, onFileOutput, onConnected, onDone])
 
   const sendMessage = useCallback((message: string) => {
     wsRef.current?.send(JSON.stringify({ type: 'message', content: message }))

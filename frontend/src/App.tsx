@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage'
 import ChatPanel from './components/ChatPanel'
 import StepTimeline from './components/StepTimeline'
 import HITLDialog from './components/HITLDialog'
+import FilePreview from './components/FilePreview'
 import { useWebSocket } from './hooks/useWebSocket'
 import './styles.css'
 
@@ -20,12 +21,19 @@ interface ChatMessage {
   content: string
 }
 
+interface FileArtifact {
+  filename: string
+  content: string
+  size: number
+}
+
 export default function App() {
   const [view, setView] = useState<View>('landing')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [hitlRequest, setHitlRequest] = useState<any | null>(null)
+  const [artifacts, setArtifacts] = useState<FileArtifact[]>([])
   const [llmStatus, setLlmStatus] = useState<{ configured: boolean; model: string } | null>(null)
   const [connected, setConnected] = useState(false)
 
@@ -37,6 +45,9 @@ export default function App() {
       }
     },
     onHITL: (req: any) => setHitlRequest(req),
+    onFileOutput: (filename: string, content: string, size: number) => {
+      setArtifacts(prev => [...prev, { filename, content, size }])
+    },
     onConnected: () => setConnected(true),
     onDone: () => setConnected(false),
   })
@@ -51,6 +62,7 @@ export default function App() {
   const handleStart = useCallback(async () => {
     setSteps([])
     setMessages([])
+    setArtifacts([])
     const resp = await fetch('/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -110,6 +122,19 @@ export default function App() {
           />
         </aside>
         <main className="app-main">
+          {artifacts.length > 0 && (
+            <div className="file-preview-section">
+              <div className="section-label">Generated Files</div>
+              {artifacts.map((art, i) => (
+                <FilePreview
+                  key={i}
+                  artifact={art}
+                  sessionId={sessionId}
+                  onDismiss={() => setArtifacts(prev => prev.filter((_, idx) => idx !== i))}
+                />
+              ))}
+            </div>
+          )}
           {steps.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">&#x1f50d;</div>

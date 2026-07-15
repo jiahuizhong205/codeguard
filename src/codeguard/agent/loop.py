@@ -102,6 +102,15 @@ class AgentLoop:
             ))
             step_idx += 1
 
+            if action.name == "write_file" and result.success:
+                file_path = action.params.get("path", "unknown")
+                file_content = action.params.get("content", "")
+                steps.append(StepEvent(
+                    step_index=step_idx, step_type=StepType.FILE_OUTPUT,
+                    content={"filename": file_path, "content": file_content, "size": len(file_content)}
+                ))
+                step_idx += 1
+
             if action.name in ("run_tests", "run_lint"):
                 feedback = self._feedback.validate(result)
                 steps.append(StepEvent(
