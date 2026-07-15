@@ -163,9 +163,12 @@ async def _run_agent(session_id: str, task: str, sessions: dict, ws: WebSocket |
             await ws.send_json({"type": "step", "step": step_data})
 
     try:
-        steps = await loop.run(task)
+        if ws:
+            await ws.send_json({"type": "status", "message": "正在初始化 Agent..."})
+
+        steps = await loop.run(task, on_step=send_step)
+
         for step in steps:
-            await send_step(step)
             step_record = {
                 "step_index": step.step_index,
                 "step_type": step.step_type.value,

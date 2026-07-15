@@ -4,12 +4,14 @@ export function useWebSocket({
   onStep,
   onHITL,
   onFileOutput,
+  onStatus,
   onConnected,
   onDone,
 }: {
   onStep: (step: any) => void
   onHITL: (req: any) => void
   onFileOutput?: (filename: string, content: string, size: number) => void
+  onStatus?: (message: string) => void
   onConnected?: () => void
   onDone?: () => void
 }) {
@@ -24,6 +26,8 @@ export function useWebSocket({
       const data = JSON.parse(event.data)
       if (data.type === 'connected') {
         onConnected?.()
+      } else if (data.type === 'status') {
+        onStatus?.(data.message)
       } else if (data.type === 'step') {
         const step = data.step
         if (step.step_type === 'file_output' && onFileOutput) {
@@ -49,7 +53,7 @@ export function useWebSocket({
       wsRef.current = null
       onDone?.()
     }
-  }, [onStep, onHITL, onFileOutput, onConnected, onDone])
+  }, [onStep, onHITL, onFileOutput, onStatus, onConnected, onDone])
 
   const sendMessage = useCallback((message: string) => {
     wsRef.current?.send(JSON.stringify({ type: 'message', content: message }))

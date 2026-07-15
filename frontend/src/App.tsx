@@ -36,6 +36,8 @@ export default function App() {
   const [artifacts, setArtifacts] = useState<FileArtifact[]>([])
   const [llmStatus, setLlmStatus] = useState<{ configured: boolean; model: string } | null>(null)
   const [connected, setConnected] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
 
   const { connect, sendMessage } = useWebSocket({
     onStep: (step: Step) => {
@@ -43,13 +45,18 @@ export default function App() {
       if (step.step_type === 'result' || step.step_type === 'think') {
         setMessages(prev => [...prev, { role: 'assistant', content: typeof step.content === 'string' ? step.content : JSON.stringify(step.content) }])
       }
+      setStatusMessage('')
     },
     onHITL: (req: any) => setHitlRequest(req),
     onFileOutput: (filename: string, content: string, size: number) => {
       setArtifacts(prev => [...prev, { filename, content, size }])
     },
+    onStatus: (message: string) => {
+      setStatusMessage(message)
+      setIsProcessing(true)
+    },
     onConnected: () => setConnected(true),
-    onDone: () => setConnected(false),
+    onDone: () => { setConnected(false); setIsProcessing(false); setStatusMessage('') },
   })
 
   useEffect(() => {
@@ -76,6 +83,8 @@ export default function App() {
   const handleSend = useCallback(async (message: string) => {
     if (!sessionId) return
     setMessages(prev => [...prev, { role: 'user', content: message }])
+    setIsProcessing(true)
+    setStatusMessage('正在发送任务...')
     await fetch(`/api/session/${sessionId}/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,6 +128,8 @@ export default function App() {
             messages={messages}
             onSend={handleSend}
             disabled={!sessionId}
+            isProcessing={isProcessing}
+            statusMessage={statusMessage}
           />
         </aside>
         <main className="app-main">

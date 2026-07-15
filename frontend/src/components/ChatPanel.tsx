@@ -9,17 +9,21 @@ export default function ChatPanel({
   messages,
   onSend,
   disabled,
+  isProcessing,
+  statusMessage,
 }: {
   messages: ChatMessage[]
   onSend: (msg: string) => void
   disabled: boolean
+  isProcessing: boolean
+  statusMessage: string
 }) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, isProcessing])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +46,7 @@ export default function ChatPanel({
         <span className="chat-panel-title">对话</span>
       </div>
       <div className="chat-messages">
-        {messages.length === 0 && (
+        {messages.length === 0 && !isProcessing && (
           <div className="empty-state">
             <div className="empty-state-icon">&#x1f4ac;</div>
             <h3>开始对话</h3>
@@ -55,6 +59,19 @@ export default function ChatPanel({
             <div className="chat-bubble">{msg.content}</div>
           </div>
         ))}
+        {isProcessing && (
+          <div className="chat-msg assistant">
+            <div className="chat-avatar">C</div>
+            <div className="chat-bubble chat-thinking">
+              {statusMessage || '正在思考...'}
+              <span className="thinking-dots">
+                <span className="dot"></span>
+                <span className="dot"></span>
+                <span className="dot"></span>
+              </span>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       <div className="chat-input-area">
@@ -63,11 +80,11 @@ export default function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? '正在连接...' : '输入编码任务，Enter 发送...'}
-          disabled={disabled}
+          placeholder={disabled ? '正在连接...' : isProcessing ? 'Agent 执行中...' : '输入编码任务，Enter 发送...'}
+          disabled={disabled || isProcessing}
           rows={1}
         />
-        <button className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={disabled || !input.trim()}>
+        <button className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={disabled || isProcessing || !input.trim()}>
           发送
         </button>
       </div>
