@@ -16,24 +16,6 @@ from codeguard.feedback.validators import TestValidator
 from codeguard.memory.store import MemoryStore
 from codeguard.skills.loader import SkillLoader
 
-_LANG_EXT = {
-    "python": "py", "py": "py",
-    "javascript": "js", "js": "js",
-    "typescript": "ts", "ts": "ts",
-    "tsx": "tsx", "jsx": "jsx",
-    "c": "c", "cpp": "cpp", "c++": "cpp",
-    "java": "java",
-    "go": "go", "golang": "go",
-    "rust": "rs", "rs": "rs",
-    "html": "html",
-    "css": "css",
-    "json": "json",
-    "yaml": "yaml", "yml": "yaml",
-    "markdown": "md", "md": "md",
-    "shell": "sh", "sh": "sh", "bash": "sh",
-    "sql": "sql",
-}
-
 _CODEBLOCK_RE = re.compile(
     r"```([a-zA-Z0-9+#]*)\s*(?::\s*([^\n]+))?\n(.*?)```",
     re.DOTALL,
@@ -41,19 +23,21 @@ _CODEBLOCK_RE = re.compile(
 
 
 def extract_code_blocks(text: str) -> list[dict]:
+    """Only extract code blocks that have an explicit filename (```lang:filename).
+
+    Blocks without a filename (e.g. ```sh, ```python) are just conversation snippets,
+    not downloadable files.
+    """
     blocks: list[dict] = []
     for m in _CODEBLOCK_RE.finditer(text):
         lang = m.group(1).lower().strip()
         filename_hint = (m.group(2) or "").strip()
         code = m.group(3)
 
-        if filename_hint:
-            filename = Path(filename_hint).name
-        elif lang and lang in _LANG_EXT:
-            filename = f"snippet_{len(blocks) + 1}.{_LANG_EXT[lang]}"
-        else:
-            filename = f"snippet_{len(blocks) + 1}.txt"
+        if not filename_hint:
+            continue
 
+        filename = Path(filename_hint).name
         blocks.append({
             "filename": filename,
             "content": code,
@@ -95,7 +79,11 @@ class AgentLoop:
         step_idx = 0
 
         messages: list[Message] = [
-            Message(role=MessageRole.SYSTEM, content="You are a coding agent. Use tools to complete tasks."),
+            Message(role=MessageRole.SYSTEM, content=(
+                "You are a coding agent. Use tools to complete tasks.\n"
+                "When creating a file for the user, use write_file tool, "
+                "or include the filename in the code block like: ```c:hello.c"
+            )),
             Message(role=MessageRole.USER, content=task),
         ]
 
