@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 from pathlib import Path
 from codeguard.agent.llm_client import LLMClient
 from codeguard.agent.action import parse_action
@@ -14,6 +15,52 @@ from codeguard.governance.scope_fence import ScopeFence
 from codeguard.feedback.validators import TestValidator
 from codeguard.memory.store import MemoryStore
 from codeguard.skills.loader import SkillLoader
+
+_LANG_EXT = {
+    "python": "py", "py": "py",
+    "javascript": "js", "js": "js",
+    "typescript": "ts", "ts": "ts",
+    "tsx": "tsx", "jsx": "jsx",
+    "c": "c", "cpp": "cpp", "c++": "cpp",
+    "java": "java",
+    "go": "go", "golang": "go",
+    "rust": "rs", "rs": "rs",
+    "html": "html",
+    "css": "css",
+    "json": "json",
+    "yaml": "yaml", "yml": "yaml",
+    "markdown": "md", "md": "md",
+    "shell": "sh", "sh": "sh", "bash": "sh",
+    "sql": "sql",
+}
+
+_CODEBLOCK_RE = re.compile(
+    r"```([a-zA-Z0-9+#]*)\s*(?::\s*([^\n]+))?\n(.*?)```",
+    re.DOTALL,
+)
+
+
+def extract_code_blocks(text: str) -> list[dict]:
+    blocks: list[dict] = []
+    for m in _CODEBLOCK_RE.finditer(text):
+        lang = m.group(1).lower().strip()
+        filename_hint = (m.group(2) or "").strip()
+        code = m.group(3)
+
+        if filename_hint:
+            filename = Path(filename_hint).name
+        elif lang and lang in _LANG_EXT:
+            filename = f"snippet_{len(blocks) + 1}.{_LANG_EXT[lang]}"
+        else:
+            filename = f"snippet_{len(blocks) + 1}.txt"
+
+        blocks.append({
+            "filename": filename,
+            "content": code,
+            "size": len(code),
+            "language": lang or "text",
+        })
+    return blocks
 
 
 class AgentLoop:
@@ -60,6 +107,13 @@ class AgentLoop:
                 step_index=step_idx, step_type=StepType.THINK, content=response.content
             ))
             step_idx += 1
+
+            for block in extract_code_blocks(response.content):
+                steps.append(StepEvent(
+                    step_index=step_idx, step_type=StepType.FILE_OUTPUT,
+                    content={"filename": block["filename"], "content": block["content"], "size": block["size"]}
+                ))
+                step_idx += 1
 
             action = parse_action(response)
             if action is None:
