@@ -1,5 +1,5 @@
 from __future__ import annotations
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Response
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from uuid import uuid4
@@ -17,7 +17,7 @@ def create_app() -> FastAPI:
     @app.post("/api/session")
     async def create_session(workspace: str = "/tmp"):
         session_id = str(uuid4())
-        sessions[session_id] = {"workspace": workspace, "steps": []}
+        sessions[session_id] = {"workspace": workspace, "steps": [], "artifacts": {}}
         return {"session_id": session_id}
 
     @app.get("/api/session/{session_id}/history")
@@ -25,6 +25,27 @@ def create_app() -> FastAPI:
         if session_id not in sessions:
             return []
         return sessions[session_id]["steps"]
+
+    @app.get("/api/session/{session_id}/artifacts")
+    async def list_artifacts(session_id: str):
+        if session_id not in sessions:
+            return {"artifacts": []}
+        arts = sessions[session_id].get("artifacts", {})
+        return {"artifacts": [{"filename": k, "size": len(v)} for k, v in arts.items()]}
+
+    @app.get("/api/session/{session_id}/artifacts/{filename:path}")
+    async def download_artifact(session_id: str, filename: str):
+        if session_id not in sessions:
+            return {"error": "Session not found"}
+        arts = sessions[session_id].get("artifacts", {})
+        if filename not in arts:
+            return {"error": "File not found"}
+        content = arts[filename]
+        return Response(
+            content=content,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{Path(filename).name}"'}
+        )
 
     @app.post("/api/session/{session_id}/message")
     async def send_message(session_id: str, body: dict = None):
@@ -129,21 +150,36 @@ async def _run_agent(session_id: str, task: str, sessions: dict, ws: WebSocket |
 
     async def send_step(step):
         if ws:
-            await ws.send_json({"type": "step", "step": {
+            step_data = {
                 "step_index": step.step_index,
                 "step_type": step.step_type.value,
                 "content": step.content if isinstance(step.content, str) else str(step.content),
-            }})
+            }
+            if step.step_type.value == "file_output" and isinstance(step.content, dict):
+                fname = step.content.get("filename", "unknown")
+                fcontent = step.content.get("content", "")
+                sessions[session_id].setdefault("artifacts", {})[fname] = fcontent
+                step_data["content"] = step.content
+            await ws.send_json({"type": "step", "step": step_data})
 
     try:
-        steps = await loop.run(task)
+        if ws:
+            await ws.send_json({"type": "status", "message": "正在初始化 Agent..."})
+
+        steps = await loop.run(task, on_step=send_step)
+
         for step in steps:
-            await send_step(step)
-            sessions[session_id]["steps"].append({
+            step_record = {
                 "step_index": step.step_index,
                 "step_type": step.step_type.value,
                 "content": step.content if isinstance(step.content, str) else str(step.content),
-            })
+            }
+            if step.step_type.value == "file_output" and isinstance(step.content, dict):
+                fname = step.content.get("filename", "unknown")
+                fcontent = step.content.get("content", "")
+                sessions[session_id].setdefault("artifacts", {})[fname] = fcontent
+                step_record["content"] = step.content
+            sessions[session_id]["steps"].append(step_record)
 
         if ws:
             await ws.send_json({"type": "done"})

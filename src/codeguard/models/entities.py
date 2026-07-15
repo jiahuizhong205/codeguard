@@ -38,6 +38,7 @@ class StepType(Enum):
     FEEDBACK = "feedback"
     HITL = "hitl"
     RESULT = "result"
+    FILE_OUTPUT = "file_output"
 
 
 @dataclass

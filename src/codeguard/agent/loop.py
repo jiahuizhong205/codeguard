@@ -1,5 +1,7 @@
 from __future__ import annotations
+import re
 from pathlib import Path
+from typing import Callable, Awaitable
 from codeguard.agent.llm_client import LLMClient
 from codeguard.agent.action import parse_action
 from codeguard.models.entities import (
@@ -14,6 +16,36 @@ from codeguard.governance.scope_fence import ScopeFence
 from codeguard.feedback.validators import TestValidator
 from codeguard.memory.store import MemoryStore
 from codeguard.skills.loader import SkillLoader
+
+_CODEBLOCK_RE = re.compile(
+    r"```([a-zA-Z0-9+#]*)\s*(?::\s*([^\n]+))?\n(.*?)```",
+    re.DOTALL,
+)
+
+
+def extract_code_blocks(text: str) -> list[dict]:
+    """Only extract code blocks that have an explicit filename (```lang:filename).
+
+    Blocks without a filename (e.g. ```sh, ```python) are just conversation snippets,
+    not downloadable files.
+    """
+    blocks: list[dict] = []
+    for m in _CODEBLOCK_RE.finditer(text):
+        lang = m.group(1).lower().strip()
+        filename_hint = (m.group(2) or "").strip()
+        code = m.group(3)
+
+        if not filename_hint:
+            continue
+
+        filename = Path(filename_hint).name
+        blocks.append({
+            "filename": filename,
+            "content": code,
+            "size": len(code),
+            "language": lang or "text",
+        })
+    return blocks
 
 
 class AgentLoop:
@@ -43,12 +75,25 @@ class AgentLoop:
         self._workspace = workspace_root
         self._max_iter = max_iterations
 
-    async def run(self, task: str) -> list[StepEvent]:
+    async def run(
+        self,
+        task: str,
+        on_step: Callable[[StepEvent], Awaitable[None]] | None = None,
+    ) -> list[StepEvent]:
         steps: list[StepEvent] = []
         step_idx = 0
 
+        async def emit(step: StepEvent):
+            steps.append(step)
+            if on_step:
+                await on_step(step)
+
         messages: list[Message] = [
-            Message(role=MessageRole.SYSTEM, content="You are a coding agent. Use tools to complete tasks."),
+            Message(role=MessageRole.SYSTEM, content=(
+                "You are a coding agent. Use tools to complete tasks.\n"
+                "When creating a file for the user, use write_file tool, "
+                "or include the filename in the code block like: ```c:hello.c"
+            )),
             Message(role=MessageRole.USER, content=task),
         ]
 
@@ -56,14 +101,21 @@ class AgentLoop:
             response = await self._llm.call(messages)
             messages.append(Message(role=MessageRole.ASSISTANT, content=response.content))
 
-            steps.append(StepEvent(
+            await emit(StepEvent(
                 step_index=step_idx, step_type=StepType.THINK, content=response.content
             ))
             step_idx += 1
 
+            for block in extract_code_blocks(response.content):
+                await emit(StepEvent(
+                    step_index=step_idx, step_type=StepType.FILE_OUTPUT,
+                    content={"filename": block["filename"], "content": block["content"], "size": block["size"]}
+                ))
+                step_idx += 1
+
             action = parse_action(response)
             if action is None:
-                steps.append(StepEvent(
+                await emit(StepEvent(
                     step_index=step_idx, step_type=StepType.RESULT,
                     content="Agent completed (no more actions)"
                 ))
@@ -71,7 +123,7 @@ class AgentLoop:
             step_idx += 1
 
             decision = self._guardrail.check(action)
-            steps.append(StepEvent(
+            await emit(StepEvent(
                 step_index=step_idx, step_type=StepType.GUARDRAIL,
                 content={"level": decision.level.value, "reason": decision.reason, "rule_id": decision.rule_id}
             ))
@@ -86,7 +138,7 @@ class AgentLoop:
 
             if decision.level == GuardrailLevel.ASK:
                 req = self._hitl.create_request(action)
-                steps.append(StepEvent(
+                await emit(StepEvent(
                     step_index=step_idx, step_type=StepType.HITL,
                     content={"request_id": req.id, "action": action.name}
                 ))
@@ -96,15 +148,24 @@ class AgentLoop:
             result = self._dispatcher.dispatch(action)
             self._audit.record(action, decision, result)
 
-            steps.append(StepEvent(
+            await emit(StepEvent(
                 step_index=step_idx, step_type=StepType.TOOL_CALL,
                 content={"tool": action.name, "success": result.success, "output": result.output[:200] if result.output else ""}
             ))
             step_idx += 1
 
+            if action.name == "write_file" and result.success:
+                file_path = action.params.get("path", "unknown")
+                file_content = action.params.get("content", "")
+                await emit(StepEvent(
+                    step_index=step_idx, step_type=StepType.FILE_OUTPUT,
+                    content={"filename": file_path, "content": file_content, "size": len(file_content)}
+                ))
+                step_idx += 1
+
             if action.name in ("run_tests", "run_lint"):
                 feedback = self._feedback.validate(result)
-                steps.append(StepEvent(
+                await emit(StepEvent(
                     step_index=step_idx, step_type=StepType.FEEDBACK,
                     content=feedback.to_message()
                 ))
@@ -114,7 +175,7 @@ class AgentLoop:
                     content=feedback.to_message(),
                 ))
                 if feedback.success:
-                    steps.append(StepEvent(
+                    await emit(StepEvent(
                         step_index=step_idx, step_type=StepType.RESULT,
                         content="Tests passed — task complete"
                     ))
